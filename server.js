@@ -47,9 +47,13 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`TempoFocus running at http://localhost:${PORT}/`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`TempoFocus running at http://localhost:${PORT}/`);
+  });
+}
+
+module.exports = server;
 
 async function handleLogin(req, res) {
   const { email } = await readJson(req);
