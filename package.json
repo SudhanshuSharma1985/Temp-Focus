@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "android:sync": "node scripts/sync-android-assets.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d3b45" />
+    <title>TempoFocus</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/rhythm-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen" aria-labelledby="loginTitle">
+      <div class="auth-card">
+        <a class="brand auth-brand" href="#top" aria-label="TempoFocus home">
+          <img src="assets/rhythm-mark.svg" alt="" width="44" height="44" />
+          <span>TempoFocus</span>
+        </a>
+        <p class="eyebrow">Secure start</p>
+        <h1 id="loginTitle">Log in with email</h1>
+        <p class="auth-copy">Use your email ID to unlock your daily rhythm dashboard.</p>
+
+        <form class="auth-form" id="emailLoginForm">
+          <label for="emailInput">Email ID</label>
+          <input id="emailInput" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com" />
+          <button class="primary-button auth-submit" id="emailLoginButton" type="submit">Log in</button>
+        </form>
+
+        <p class="auth-status" id="authStatus" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <div class="app-shell is-hidden" id="appShell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="TempoFocus home">
+          <img src="assets/rhythm-mark.svg" alt="" width="40" height="40" />
+          <span>TempoFocus</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="user-chip" id="userEmailChip"></span>
+          <button class="secondary-button compact-button" id="logoutButton" type="button">
+            <span aria-hidden="true">⇥</span>
+            <span>Logout</span>
+          </button>
+          <span class="date-chip" id="todayLabel"></span>
+          <button class="icon-button" id="exportButton" type="button" title="Export data" aria-label="Export data">
+            <span aria-hidden="true">↧</span>
+          </button>
+          <button class="icon-button" id="importButton" type="button" title="Import data" aria-label="Import data">
+            <span aria-hidden="true">↥</span>
+          </button>
+          <input class="visually-hidden" id="importInput" type="file" accept="application/json" />
+          <button class="primary-button" id="enableRemindersButton" type="button">
+            <span aria-hidden="true">◴</span>
+            <span id="reminderButtonText">Enable reminders</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="command-band" aria-labelledby="commandTitle">
+          <div class="command-copy">
+            <p class="eyebrow">6 AM-11 PM rhythm</p>
+            <h1 id="commandTitle">Today</h1>
+            <div class="priority-layout">
+              <section class="priority-block" aria-labelledby="dayPrioritiesTitle">
+                <div class="section-heading">
+                  <h2 id="dayPrioritiesTitle">Day priorities</h2>
+                  <div class="priority-actions">
+                    <button class="mini-button" id="addDayPriority" type="button" title="Add day priority" aria-label="Add day priority">
+                      <span aria-hidden="true">+</span>
+                    </button>
+                    <button class="mini-button" id="resetDayPriorities" type="button" title="Reset day priorities" aria-label="Reset day priorities">
+                      <span aria-hidden="true">↺</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="priority-list" id="dayPriorities"></div>
+              </section>
+              <section class="priority-block" aria-labelledby="weekPrioritiesTitle">
+                <div class="section-heading">
+                  <h2 id="weekPrioritiesTitle">Week priorities</h2>
+                  <div class="priority-actions">
+                    <button class="mini-button" id="addWeekPriority" type="button" title="Add week priority" aria-label="Add week priority">
+                      <span aria-hidden="true">+</span>
+                    </button>
+                    <button class="mini-button" id="resetWeekPriorities" type="button" title="Reset week priorities" aria-label="Reset week priorities">
+                      <span aria-hidden="true">↺</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="priority-list" id="weekPriorities"></div>
+              </section>
+            </div>
+          </div>
+
+          <aside class="score-stage" aria-labelledby="moodTitle">
+            <img class="rhythm-art" src="assets/rhythm-panel.svg" alt="" />
+            <div class="mood-stack">
+              <p class="eyebrow">Daily signal</p>
+              <div class="mood-face" id="moodFace" aria-hidden="true">:|</div>
+              <h2 id="moodTitle">Neutral</h2>
+              <p id="moodDetail">No completed blocks yet.</p>
+            </div>
+            <div class="score-ring" aria-label="Day efficiency score">
+              <svg viewBox="0 0 120 120" role="img" aria-labelledby="scoreTitle">
+                <title id="scoreTitle">Day efficiency</title>
+                <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+                <circle class="ring-value" id="scoreRing" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <span id="scoreValue">0%</span>
+            </div>
+          </aside>
+        </section>
+
+        <section class="focus-alert is-hidden" id="focusAlert" aria-live="polite">
+          <div>
+            <strong>Focus reset</strong>
+            <span id="focusAlertCopy"></span>
+          </div>
+          <button class="mini-button" id="dismissFocusAlert" type="button" title="Dismiss alert" aria-label="Dismiss alert">
+            <span aria-hidden="true">x</span>
+          </button>
+        </section>
+
+        <section class="metrics-strip" aria-label="Daily metrics">
+          <article class="metric-tile">
+            <span>Logged</span>
+            <strong id="loggedMetric">0/17</strong>
+          </article>
+          <article class="metric-tile">
+            <span>Focus hours</span>
+            <strong id="focusMetric">0</strong>
+          </article>
+          <article class="metric-tile">
+            <span>Wasted hours</span>
+            <strong id="wasteMetric">0</strong>
+          </article>
+          <article class="metric-tile">
+            <span>Best streak</span>
+            <strong id="streakMetric">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="timeline-tool" aria-labelledby="timelineTitle">
+            <div class="tool-heading">
+              <div>
+                <p class="eyebrow">Hourly log</p>
+                <h2 id="timelineTitle">Your day, block by block</h2>
+              </div>
+              <div class="date-picker">
+                <label for="dateInput">Date</label>
+                <input id="dateInput" type="date" />
+              </div>
+            </div>
+
+            <div class="timeline-controls">
+              <button class="secondary-button" id="jumpCurrentButton" type="button">
+                <span aria-hidden="true">⌖</span>
+                <span>Current block</span>
+              </button>
+              <button class="secondary-button" id="testReminderButton" type="button">
+                <span aria-hidden="true">◴</span>
+                <span>Test ping</span>
+              </button>
+              <label class="switch-row">
+                <input id="focusAlertsToggle" type="checkbox" />
+                <span>Focus alerts</span>
+              </label>
+              <label class="threshold-row">
+                <span>Alert at</span>
+                <select id="thresholdSelect" aria-label="Focus alert threshold">
+                  <option value="3">3 wasted hrs</option>
+                  <option value="4">4 wasted hrs</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="hour-list" id="hourList"></div>
+          </section>
+
+          <aside class="analysis-tool" aria-labelledby="analysisTitle">
+            <div class="tool-heading compact">
+              <div>
+                <p class="eyebrow">Analysis</p>
+                <h2 id="analysisTitle">Dashboard</h2>
+              </div>
+            </div>
+
+            <div class="tab-row" role="tablist" aria-label="Analysis range">
+              <button class="tab-button is-active" type="button" role="tab" aria-selected="true" data-tab="daily">Daily</button>
+              <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="weekly">Weekly</button>
+              <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="monthly">Monthly</button>
+            </div>
+
+            <div class="analysis-summary" id="analysisSummary"></div>
+            <div class="chart-shell" id="chartShell"></div>
+            <div class="insight-list" id="insightList"></div>
+            <section class="coach-panel" aria-labelledby="coachTitle">
+              <div class="coach-heading">
+                <div>
+                  <p class="eyebrow">AI coach</p>
+                  <h2 id="coachTitle">Time advice</h2>
+                </div>
+                <button class="secondary-button compact-button" id="coachButton" type="button">
+                  <span aria-hidden="true">✦</span>
+                  <span>Suggest</span>
+                </button>
+              </div>
+              <div class="coach-output" id="coachOutput">
+                <p>Log a few blocks, then ask for coaching.</p>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <template id="priorityTemplate">
+      <div class="priority-item">
+        <label class="priority-check">
+          <input type="checkbox" />
+          <span class="custom-check" aria-hidden="true"></span>
+        </label>
+        <input class="priority-input" type="text" maxlength="70" />
+        <button class="remove-priority" type="button" title="Remove priority" aria-label="Remove priority">
+          <span aria-hidden="true">x</span>
+        </button>
+      </div>
+    </template>
+
+    <template id="hourTemplate">
+      <article class="hour-row">
+        <div class="hour-time">
+          <span class="hour-label"></span>
+          <span class="hour-state"></span>
+        </div>
+        <div class="hour-fields">
+          <input class="activity-input" type="text" maxlength="140" placeholder="What happened in this hour?" />
+          <select class="category-select" aria-label="Activity type"></select>
+        </div>
+        <div class="score-control">
+          <label>
+            <span>Efficiency</span>
+            <strong class="score-readout">60</strong>
+          </label>
+          <input class="score-slider" type="range" min="0" max="100" step="5" value="60" />
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

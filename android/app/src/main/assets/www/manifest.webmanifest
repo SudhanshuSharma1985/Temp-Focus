@@ -1,0 +1,17 @@
+{
+  "name": "TempoFocus",
+  "short_name": "TempoFocus",
+  "description": "Hourly time tracking and focus analytics from 6 AM to 11 PM.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f8f6",
+  "theme_color": "#0d3b45",
+  "icons": [
+    {
+      "src": "assets/rhythm-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
