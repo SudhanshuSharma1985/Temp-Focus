@@ -20,12 +20,16 @@ module.exports = async (req, res) => {
     const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
 
     if (req.method === "POST" && pathname === "/api/login") {
-      await handleLogin(req, res);
+      const body = await readBody(req);
+      const payload = body ? JSON.parse(body) : {};
+      await handleLogin(payload, res);
       return;
     }
 
     if (req.method === "POST" && pathname === "/api/coach") {
-      await handleCoach(req, res);
+      const body = await readBody(req);
+      const payload = body ? JSON.parse(body) : {};
+      await handleCoach(payload, res);
       return;
     }
 
@@ -36,9 +40,23 @@ module.exports = async (req, res) => {
   }
 };
 
-async function handleLogin(req, res) {
+async function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+      if (body.length > 1024 * 1024) {
+        reject(new Error("Request body too large."));
+      }
+    });
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
+}
+
+async function handleLogin(payload, res) {
   try {
-    const { email } = req.body || {};
+    const { email } = payload;
     const normalizedEmail = String(email || "").trim().toLowerCase();
 
     if (!isValidEmail(normalizedEmail)) {
@@ -58,10 +76,8 @@ async function handleLogin(req, res) {
   }
 }
 
-async function handleCoach(req, res) {
+async function handleCoach(payload, res) {
   try {
-    const payload = req.body || {};
-
     if (!payload || typeof payload !== "object") {
       res.status(400).json({ ok: false, error: "Missing coaching payload." });
       return;
