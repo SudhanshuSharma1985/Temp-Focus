@@ -53,8 +53,6 @@ if (require.main === module) {
   });
 }
 
-module.exports = server;
-
 async function handleLogin(req, res) {
   const { email } = await readJson(req);
   const normalizedEmail = String(email || "").trim().toLowerCase();
