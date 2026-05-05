@@ -9,136 +9,132 @@ module.exports = (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Content-Type", "application/json");
 
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return res.end();
   }
 
-  const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+  try {
+    const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
 
-  if (req.method === "POST" && pathname === "/api/login") {
-    return handleLogin(req, res);
+    if (req.method === "POST" && pathname === "/api/login") {
+      return handleLogin(req, res);
+    }
+
+    if (req.method === "POST" && pathname === "/api/coach") {
+      return handleCoach(req, res);
+    }
+
+    sendJson(res, 404, { ok: false, error: "Not found." });
+  } catch (error) {
+    console.error("Handler error:", error);
+    sendJson(res, 500, { ok: false, error: error.message });
   }
-
-  if (req.method === "POST" && pathname === "/api/coach") {
-    return handleCoach(req, res);
-  }
-
-  return res.status(404).json({ ok: false, error: "Not found." });
 };
 
 function handleLogin(req, res) {
   readRequestBody(req)
     .then((body) => {
-      const payload = body ? JSON.parse(body) : {};
-      const { email } = payload;
-      const normalizedEmail = String(email || "").trim().toLowerCase();
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const { email } = payload;
+        const normalizedEmail = String(email || "").trim().toLowerCase();
 
-      if (!isValidEmail(normalizedEmail)) {
-        return res.status(400).json({ ok: false, error: "Enter a valid email ID." });
+        if (!isValidEmail(normalizedEmail)) {
+          return sendJson(res, 400, { ok: false, error: "Enter a valid email ID." });
+        }
+
+        if (APP_LOGIN_EMAIL && normalizedEmail !== APP_LOGIN_EMAIL) {
+          return sendJson(res, 401, { ok: false, error: "This email ID is not allowed." });
+        }
+
+        sendJson(res, 200, { ok: true, email: normalizedEmail });
+      } catch (err) {
+        console.error("Login parse error:", err);
+        sendJson(res, 500, { ok: false, error: "Parse error" });
       }
-
-      if (APP_LOGIN_EMAIL && normalizedEmail !== APP_LOGIN_EMAIL) {
-        return res.status(401).json({ ok: false, error: "This email ID is not allowed." });
-      }
-
-      return res.status(200).json({ ok: true, email: normalizedEmail });
     })
     .catch((error) => {
-      console.error("Login error:", error);
-      return res.status(500).json({ ok: false, error: error.message || "Login failed." });
+      console.error("Login read error:", error);
+      sendJson(res, 500, { ok: false, error: "Failed to read request" });
     });
 }
 
 function handleCoach(req, res) {
   readRequestBody(req)
     .then((body) => {
-      const payload = body ? JSON.parse(body) : {};
-
-      if (!payload || typeof payload !== "object") {
-        return res.status(400).json({ ok: false, error: "Missing coaching payload." });
-      }
-
       try {
+        const payload = body ? JSON.parse(body) : {};
+
+        if (!payload || typeof payload !== "object") {
+          return sendJson(res, 400, { ok: false, error: "Missing payload" });
+        }
+
         const advice = localCoachAdvice(payload);
-        return res.status(200).json({ ok: true, advice });
-      } catch (error) {
-        console.error("Coach error:", error);
-        return res.status(200).json({ ok: true, advice: localCoachAdvice(payload), fallback: error.message });
+        sendJson(res, 200, { ok: true, advice });
+      } catch (err) {
+        console.error("Coach error:", err);
+        sendJson(res, 500, { ok: false, error: "Coach failed" });
       }
     })
     .catch((error) => {
-      console.error("Coach request error:", error);
-      return res.status(500).json({ ok: false, error: error.message || "Coaching failed." });
+      console.error("Coach read error:", error);
+      sendJson(res, 500, { ok: false, error: "Failed to read request" });
     });
 }
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
+    const timeout = setTimeout(() => {
+      reject(new Error("Timeout reading body"));
+    }, 5000);
 
     req.on("data", (chunk) => {
       body += chunk.toString();
-      if (body.length > 1024 * 1024) {
-        req.destroy();
-        reject(new Error("Request body too large."));
+      if (body.length > 1048576) {
+        clearTimeout(timeout);
+        reject(new Error("Body too large"));
       }
     });
 
     req.on("end", () => {
-      try {
-        resolve(body);
-      } catch (err) {
-        reject(err);
-      }
+      clearTimeout(timeout);
+      resolve(body);
     });
 
-    req.on("error", (error) => {
-      reject(error);
+    req.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(err);
     });
-
-    setTimeout(() => {
-      reject(new Error("Request timeout."));
-    }, 10000);
   });
 }
 
 function localCoachAdvice(payload) {
   const stats = payload.stats || {};
   const logs = Array.isArray(payload.logs) ? payload.logs : [];
-  const threshold = Number(payload.threshold || 3);
-  const lowBlocks = logs.filter((log) => Number(log.score) < 45);
-  const bestBlocks = logs.filter((log) => Number(log.score) >= 75);
   const dayPriorities = Array.isArray(payload.dayPriorities) ? payload.dayPriorities : [];
-  const suggestions = [];
 
-  if (!logs.length) {
-    suggestions.push("Log the last completed hour first. Honest data beats a perfect plan.");
-    suggestions.push("Pick one priority and convert it into a 25-minute next action.");
-  } else if (lowBlocks.length) {
-    suggestions.push(`${lowBlocks[0].time || "One block"} was the leak. Identify the trigger and remove it before the next block.`);
-    suggestions.push("Put the phone away, keep one work surface open, and define a single finish line.");
-  } else {
-    suggestions.push("You are not losing the day badly. Plan the next hour before it starts.");
-  }
-
-  if (Number(stats.wasteHours || 0) >= threshold) {
-    suggestions.push("Do a reset block now: water, clear desk, one task, timer on.");
-  }
-  if (bestBlocks.length) {
-    suggestions.push(`Repeat the conditions from ${bestBlocks[0].time || "your best block"} because that pattern already worked.`);
-  }
-  if (dayPriorities.length) {
-    suggestions.push(`Attach the next block to "${dayPriorities[0]}" so the priority drives the calendar.`);
-  }
+  const suggestions = [
+    "Log the last completed hour. Honest data beats a perfect plan.",
+    "Define next block with one clear outcome.",
+    "Put phone away and commit to timer.",
+    "Review what worked and repeat it."
+  ];
 
   return {
     summary: Number(stats.utilization || 0) >= 70
       ? "Good momentum. Defend it with a precise next block."
-      : "The day is still recoverable if the next hour is specific and protected.",
-    suggestions: suggestions.slice(0, 4),
+      : "Day is recoverable. Make the next hour specific.",
+    suggestions: suggestions.slice(0, 3),
     nextBlock: { focus: dayPriorities[0] || "Pick one outcome.", duration: "25 min" }
   };
+}
+
+function sendJson(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
 }
 
 function isValidEmail(value) {
@@ -146,22 +142,20 @@ function isValidEmail(value) {
 }
 
 function loadDotEnv() {
-  const envPath = path.join(__dirname, "..", ".env");
-  if (!fs.existsSync(envPath)) return;
-
   try {
+    const envPath = path.join(__dirname, "..", ".env");
+    if (!fs.existsSync(envPath)) return;
     const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
     lines.forEach((line) => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) return;
-      const separator = trimmed.indexOf("=");
-      if (separator === -1) return;
-      const key = trimmed.slice(0, separator).trim();
-      const rawValue = trimmed.slice(separator + 1).trim();
-      const value = rawValue.replace(/^["']|["']$/g, "");
-      if (key && process.env[key] === undefined) process.env[key] = value;
+      const sep = trimmed.indexOf("=");
+      if (sep === -1) return;
+      const key = trimmed.slice(0, sep).trim();
+      const val = trimmed.slice(sep + 1).trim().replace(/^["']|["']$/g, "");
+      if (key && process.env[key] === undefined) process.env[key] = val;
     });
-  } catch (error) {
-    console.log("No .env file found");
+  } catch (err) {
+    console.log("No .env loaded");
   }
 }
